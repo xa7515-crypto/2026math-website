@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文字雲產生器</title>
+  <style>
+    :root { color-scheme: light; font-family: "Noto Sans TC", system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: #172033; background: linear-gradient(135deg, #edf4ff, #fff6e8); }
+    main { width: min(960px, calc(100% - 32px)); margin: 48px auto; }
+    h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.5rem); }
+    .intro { color: #52607a; font-size: 1.05rem; }
+    .panel { display: grid; grid-template-columns: minmax(260px, .9fr) minmax(0, 1.4fr); gap: 20px; margin-top: 28px; }
+    section { background: rgba(255,255,255,.88); border: 1px solid #dce5f5; border-radius: 20px; padding: 24px; box-shadow: 0 16px 40px rgba(37, 59, 95, .1); }
+    label { display: block; margin-bottom: 10px; font-weight: 700; }
+    textarea { width: 100%; min-height: 230px; resize: vertical; border: 1px solid #c9d6ed; border-radius: 12px; padding: 13px; font: inherit; line-height: 1.6; }
+    button { margin-top: 14px; border: 0; border-radius: 999px; padding: 12px 20px; background: #315efb; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+    button:hover { background: #244ad2; }
+    #cloud { min-height: 310px; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 10px 16px; text-align: center; }
+    .word { display: inline-block; line-height: 1; font-weight: 800; transition: transform .18s ease; }
+    .word:hover { transform: scale(1.12) rotate(-2deg); }
+    .empty { color: #7b879c; }
+    @media (max-width: 720px) { main { margin: 28px auto; } .panel { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>文字雲產生器</h1>
+    <p class="intro">貼上文字，最常出現的詞會變得更大。</p>
+    <div class="panel">
+      <section>
+        <label for="source">輸入文字</label>
+        <textarea id="source">數學 學習 數學 解題 思考 學習 數學 創意 解題 邏輯 思考</textarea>
+        <button id="generate">產生文字雲</button>
+      </section>
+      <section id="cloud" aria-live="polite"></section>
+    </div>
+  </main>
+  <script>
+    const colors = ["#315efb", "#e05a47", "#087f5b", "#8b5cf6", "#d97706", "#0e7490"];
+    const source = document.querySelector("#source");
+    const cloud = document.querySelector("#cloud");
+    function render() {
+      const counts = new Map();
+      source.value.match(/[\p{Script=Han}]{1,}|[A-Za-z0-9]+/gu)?.forEach(word => {
+        const key = word.toLowerCase();
+        counts.set(key, (counts.get(key) || 0) + 1);
+      });
+      const words = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 40);
+      cloud.replaceChildren();
+      if (!words.length) {
+        cloud.innerHTML = '<p class="empty">輸入一些文字後，文字雲會顯示在這裡。</p>';
+        return;
+      }
+      const max = words[0][1];
+      words.forEach(([word, count], index) => {
+        const span = document.createElement("span");
+        span.className = "word";
+        span.textContent = word;
+        span.title = `出現 ${count} 次`;
+        span.style.fontSize = `${1 + (count / max) * 2.5}rem`;
+        span.style.color = colors[index % colors.length];
+        cloud.append(span);
+      });
+    }
+    document.querySelector("#generate").addEventListener("click", render);
+    source.addEventListener("input", render);
+    render();
+  </script>
+</body>
+</html>
