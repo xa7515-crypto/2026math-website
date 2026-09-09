@@ -32,15 +32,34 @@
       <section>
         <label for="source">輸入文字</label>
         <textarea id="source">數學 學習 數學 解題 思考 學習 數學 創意 解題 邏輯 思考</textarea>
-        <button id="generate">產生文字雲</button>
+        <button id="generate">產生並儲存文字雲</button>
+        <p id="status" class="empty" aria-live="polite"></p>
       </section>
       <section id="cloud" aria-live="polite"></section>
     </div>
   </main>
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+    import { addDoc, collection, getDocs, getFirestore, limit, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCNVTtloVQYuW48TO8SKC6rDotQeGIX5jE",
+      authDomain: "teacher-f9a38.firebaseapp.com",
+      projectId: "teacher-f9a38",
+      storageBucket: "teacher-f9a38.firebasestorage.app",
+      messagingSenderId: "116359218629",
+      appId: "1:116359218629:web:9137c8cb0f31f6cccbb7ac"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
     const colors = ["#315efb", "#e05a47", "#087f5b", "#8b5cf6", "#d97706", "#0e7490"];
     const source = document.querySelector("#source");
     const cloud = document.querySelector("#cloud");
+    const status = document.querySelector("#status");
+    const generate = document.querySelector("#generate");
+
     function render() {
       const counts = new Map();
       source.value.match(/[\p{Script=Han}]{1,}|[A-Za-z0-9]+/gu)?.forEach(word => {
@@ -64,9 +83,40 @@
         cloud.append(span);
       });
     }
-    document.querySelector("#generate").addEventListener("click", render);
+
+    async function connect() {
+      await signInAnonymously(auth);
+      const recent = await getDocs(query(collection(db, "submissions"), limit(10)));
+      status.textContent = `資料庫已連線，近期共有 ${recent.size} 筆提交。`;
+    }
+
+    generate.addEventListener("click", async () => {
+      render();
+      const text = source.value.trim();
+      if (!text) return;
+      generate.disabled = true;
+      status.textContent = "正在儲存…";
+      try {
+        await addDoc(collection(db, "submissions"), {
+          text,
+          createdAt: serverTimestamp(),
+          userId: auth.currentUser.uid
+        });
+        status.textContent = "已儲存到 Firestore。";
+      } catch (error) {
+        status.textContent = "無法儲存，請稍後再試。";
+        console.error(error);
+      } finally {
+        generate.disabled = false;
+      }
+    });
+
     source.addEventListener("input", render);
     render();
+    connect().catch(error => {
+      status.textContent = "資料庫連線失敗。";
+      console.error(error);
+    });
   </script>
 </body>
 </html>
